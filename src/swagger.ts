@@ -1,0 +1,375 @@
+import {
+  sendOtp,
+  verifyOtp,
+  getBuildings,
+  createBuilding,
+  getBuilding,
+  getUnitsByBuilding,
+  getUnit,
+  updateUnit,
+  deleteUnit,
+  getOwnerBuildings,
+  assignTenant,
+  getPendingReceipts,
+  acceptReceipt,
+  rejectReceipt,
+  registerTenant,
+  verifyTenantOtp,
+  assignPropertyManager,
+  revokePropertyManager,
+  exportReports,
+  getMyUnits,
+  uploadReceipt,
+  getPendingBuildings,
+  approveBuilding,
+  getAdminDashboard,
+  getPMBuildings,
+  getPMPendingReceipts,
+  updateUnitCycle,
+  getTenantHistory,
+  serveFile,
+} from './openAPI/swagger';
+
+export const swaggerDocument = {
+  openapi: '3.0.1',
+  info: {
+    version: '1.0.1',
+    title: 'Property Management API',
+    description: 'API for Owner, Tenant and Admin mobile/web applications.',
+  },
+  servers: [
+    {
+      url: 'http://localhost:3000/api/v1',
+      description: 'Local server',
+    },
+  ],
+  components: {
+    schemas: {
+      User: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          fullname: { type: 'string' },
+          mobile: { type: 'string' },
+          email: { type: 'string' },
+          role: { type: 'string', enum: ['admin', 'owner', 'property_manager', 'tenant'] },
+          gender: { type: 'string', enum: ['male', 'female', 'other'] },
+          street_address: { type: 'string' },
+          city: { type: 'string' },
+          managed_by_owner_id: { type: 'string', format: 'uuid', nullable: true },
+          account_status: { type: 'boolean', default: true },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      Building: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          name: { type: 'string' },
+          description: { type: 'string' },
+          address: { type: 'string' },
+          city: { type: 'string' },
+          country: { type: 'string' },
+          total_floors: { type: 'integer' },
+          total_units: { type: 'integer' },
+          payment_cycle_months: { type: 'integer', default: 3 },
+          default_rent_amount: { type: 'number' },
+          status: { type: 'string', enum: ['PENDING_REVIEW', 'APPROVED', 'REJECTED'] },
+          documents: { type: 'array', items: { type: 'string' } },
+          rejection_reason: { type: 'string' },
+          owner_id: { type: 'string', format: 'uuid' },
+          is_active: { type: 'boolean', default: true },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      Unit: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          unit_number: { type: 'string' },
+          floor: { type: 'integer' },
+          rent_amount: { type: 'number' },
+          size: { type: 'string' },
+          description: { type: 'string' },
+          status: { type: 'string', enum: ['vacant', 'occupied', 'maintenance'] },
+          tenant_id: { type: 'string', format: 'uuid', nullable: true },
+          building_id: { type: 'string', format: 'uuid' },
+          next_rent_due_date: { type: 'string', format: 'date' },
+          payment_cycle_months: { type: 'integer', default: 3 },
+          is_active: { type: 'boolean', default: true },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      Tenant: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          fullname: { type: 'string' },
+          mobile: { type: 'string' },
+          address: { type: 'string' },
+          city: { type: 'string' },
+          emergency_contact_name: { type: 'string' },
+          emergency_contact_mobile: { type: 'string' },
+          user_id: { type: 'string', format: 'uuid', nullable: true },
+          is_active: { type: 'boolean', default: true },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      Payment: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          amount: { type: 'number' },
+          due_date: { type: 'string', format: 'date' },
+          paid_date: { type: 'string', format: 'date', nullable: true },
+          status: { type: 'string', enum: ['pending', 'paid', 'overdue', 'cancelled'] },
+          payment_method: { type: 'string' },
+          transaction_id: { type: 'string', format: 'uuid' },
+          notes: { type: 'string' },
+          tenant_id: { type: 'string', format: 'uuid' },
+          unit_id: { type: 'string', format: 'uuid' },
+          receipt_file_path: { type: 'string' },
+          receipt_status: { type: 'string', enum: ['pending', 'approved', 'rejected'] },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      Receipt: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          tenant_id: { type: 'string', format: 'uuid' },
+          unit_id: { type: 'string', format: 'uuid' },
+          receipt_url: { type: 'string' },
+          status: { type: 'string', enum: ['PENDING', 'ACCEPTED', 'REJECTED'] },
+          rejection_reason: { type: 'string' },
+          notes: { type: 'string' },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      Notification: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          title: { type: 'string' },
+          message: { type: 'string' },
+          type: { type: 'string', enum: ['payment_due', 'lease_expiring', 'maintenance', 'general'] },
+          related_entity_type: { type: 'string' },
+          related_entity_id: { type: 'string' },
+          is_read: { type: 'boolean', default: false },
+          user_id: { type: 'string', format: 'uuid' },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      AuditLog: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          user_id: { type: 'string', format: 'uuid' },
+          action: { type: 'string', enum: ['create', 'update', 'delete', 'login', 'logout'] },
+          entity: { type: 'string' },
+          entity_id: { type: 'string', format: 'uuid', nullable: true },
+          details: { type: 'string' },
+          ip_address: { type: 'string' },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      TenantAssignment: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', readOnly: true, format: 'uuid' },
+          tenant_id: { type: 'string', format: 'uuid' },
+          unit_id: { type: 'string', format: 'uuid' },
+          owner_id: { type: 'string', format: 'uuid' },
+          start_date: { type: 'string', format: 'date' },
+          end_date: { type: 'string', format: 'date' },
+          payment_cycle_months: { type: 'integer', default: 3 },
+          active: { type: 'boolean', default: true },
+          created_at: { type: 'string', format: 'date-time', readOnly: true },
+          updated_at: { type: 'string', format: 'date-time', readOnly: true },
+        },
+      },
+      Error: {
+        properties: {
+          success: { type: 'boolean', default: false },
+          message: { type: 'string' },
+        },
+        required: ['message'],
+      },
+    },
+    securitySchemes: {
+      bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+    },
+  },
+  paths: {
+    /* Auth */
+    '/auth/send-otp': { post: sendOtp },
+    '/auth/verify-otp': { post: verifyOtp },
+
+    /* Owner Endpoints */
+    '/owner/buildings': { get: getOwnerBuildings, post: createBuilding },
+    '/owner/buildings/{id}': { get: getBuilding },
+    '/owner/buildings/{id}/units': { get: getUnitsByBuilding },
+    '/owner/reports/export': { get: exportReports },
+    '/owner/units/{unitId}/register-tenant': { post: registerTenant },
+    '/owner/units/{unitId}/verify-otp': { post: verifyTenantOtp },
+    '/owner/units/{unitId}/assign-tenant': { post: assignTenant },
+    '/owner/property-managers': { post: assignPropertyManager },
+    '/owner/property-managers/{id}': { delete: revokePropertyManager },
+    '/owner/pending-receipts': { get: getPendingReceipts },
+    '/owner/receipts/{receiptId}/accept': { post: acceptReceipt },
+    '/owner/receipts/{receiptId}/reject': { post: rejectReceipt },
+
+    /* Tenant Endpoints */
+    '/tenant/my-units': { get: getMyUnits },
+    '/tenant/receipts': { post: uploadReceipt },
+
+    /* Admin Endpoints */
+    '/admin/buildings/pending': { get: getPendingBuildings },
+    '/admin/buildings/{id}/approve': { post: approveBuilding },
+    '/admin/dashboard': { get: getAdminDashboard },
+    '/admin/providers/verification': {
+      get: { summary: 'List provider profiles awaiting verification', security: [{ bearerAuth: [] }], responses: { 200: { description: 'Pending provider profiles' } } },
+      patch: {
+        summary: 'Verify or reject a provider',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['providerId', 'status'], properties: { providerId: { type: 'string', format: 'uuid' }, status: { type: 'string', enum: ['VERIFIED', 'REJECTED'] } } } } } },
+        responses: { 200: { description: 'Verification updated' }, 400: { description: 'Invalid input' } },
+      },
+    },
+    '/admin/work-posts/moderation': {
+      get: { summary: 'List posts awaiting consent or moderation', security: [{ bearerAuth: [] }], responses: { 200: { description: 'Pending posts' } } },
+      patch: {
+        summary: 'Approve or reject a work post',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['postId', 'status'], properties: { postId: { type: 'string', format: 'uuid' }, status: { type: 'string', enum: ['PUBLISHED', 'REJECTED'] } } } } } },
+        responses: { 200: { description: 'Moderation decision saved' }, 400: { description: 'Invalid input or missing consent' } },
+      },
+    },
+    '/admin/issues': {
+      get: { summary: 'List reported issues', security: [{ bearerAuth: [] },], parameters: [{ in: 'query', name: 'status', schema: { type: 'string', enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] } }], responses: { 200: { description: 'Issues' } } },
+      patch: {
+        summary: 'Update issue status',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['issueId', 'status'], properties: { issueId: { type: 'string', format: 'uuid' }, status: { type: 'string', enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] } } } } } },
+        responses: { 200: { description: 'Issue status updated' } },
+      },
+    },
+    '/admin/reports': {
+      get: { summary: 'Get aggregate SBMS reports', security: [{ bearerAuth: [] }], parameters: [{ in: 'query', name: 'since', schema: { type: 'string', format: 'date-time' } }, { in: 'query', name: 'until', schema: { type: 'string', format: 'date-time' } }], responses: { 200: { description: 'Counts grouped by booking status' } } },
+    },
+    '/admin/activity-logs': {
+      get: {
+        summary: 'Read admin-only SBMS audit activity logs',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { in: 'query', name: 'userId', schema: { type: 'string', format: 'uuid' } },
+          { in: 'query', name: 'action', schema: { type: 'string' } },
+          { in: 'query', name: 'entity', schema: { type: 'string' } },
+          { in: 'query', name: 'since', schema: { type: 'string', format: 'date-time' } },
+          { in: 'query', name: 'until', schema: { type: 'string', format: 'date-time' } },
+          { in: 'query', name: 'limit', schema: { type: 'integer', minimum: 1, maximum: 100, default: 50 } },
+          { in: 'query', name: 'offset', schema: { type: 'integer', minimum: 0, default: 0 } },
+        ],
+        responses: { 200: { description: 'Paginated SBMS audit events' } },
+      },
+    },
+    '/admin/settings': {
+      get: { summary: 'Read platform settings', security: [{ bearerAuth: [] }], responses: { 200: { description: 'Grouped settings' } } },
+      patch: {
+        summary: 'Create or update platform settings',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', additionalProperties: true, example: { general: { serviceRadiusKm: 25 }, booking: { cancellationWindowHours: 24 } } } } } },
+        responses: { 200: { description: 'Updated setting keys' } },
+      },
+    },
+
+    /* SBMS Endpoints */
+    '/providers/nearby': {
+      get: {
+        summary: 'Discover verified providers by location',
+        parameters: [
+          { in: 'query', name: 'latitude', required: true, schema: { type: 'number', minimum: -90, maximum: 90 } },
+          { in: 'query', name: 'longitude', required: true, schema: { type: 'number', minimum: -180, maximum: 180 } },
+          { in: 'query', name: 'radiusKm', schema: { type: 'number', minimum: 0, maximum: 500, default: 25 } },
+          { in: 'query', name: 'category', schema: { type: 'string' } },
+          { in: 'query', name: 'meetingMode', schema: { type: 'string', enum: ['provider_comes', 'client_goes', 'third_location'] } },
+        ],
+        responses: { 200: { description: 'Providers ordered by distance' }, 400: { description: 'Invalid location or filter' } },
+      },
+    },
+    '/providers/{id}': {
+      get: { summary: 'Get a verified provider and active services', parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { 200: { description: 'Provider profile' }, 404: { description: 'Provider not found' } } },
+    },
+    '/providers': {
+      post: {
+        summary: 'Create a provider profile (requires verification)',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['category', 'latitude', 'longitude', 'meetingModes'], properties: { category: { type: 'string' }, bio: { type: 'string' }, latitude: { type: 'number' }, longitude: { type: 'number' }, serviceRadiusKm: { type: 'integer', default: 25 }, travelBufferMinutes: { type: 'integer', default: 0 }, meetingModes: { type: 'array', items: { type: 'string', enum: ['provider_comes', 'client_goes', 'third_location'] } } } } } } },
+        responses: { 201: { description: 'Provider submitted for verification' }, 409: { description: 'Profile already exists' } },
+      },
+    },
+    '/providers/me': {
+      patch: {
+        summary: 'Update the signed-in user provider profile',
+        security: [{ bearerAuth: [] }],
+        requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { category: { type: 'string' }, bio: { type: 'string' }, latitude: { type: 'number' }, longitude: { type: 'number' }, serviceRadiusKm: { type: 'integer' }, travelBufferMinutes: { type: 'integer' }, meetingModes: { type: 'array', items: { type: 'string', enum: ['provider_comes', 'client_goes', 'third_location'] } } } } } } },
+        responses: { 200: { description: 'Provider updated' } },
+      },
+    },
+    '/providers/me/services': {
+      post: {
+        summary: 'Create a service for the signed-in provider',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['title', 'category', 'priceMinor', 'durationMinutes', 'meetingModes'], properties: { title: { type: 'string' }, category: { type: 'string' }, description: { type: 'string' }, priceMinor: { type: 'integer', minimum: 0 }, durationMinutes: { type: 'integer', minimum: 1 }, meetingModes: { type: 'array', items: { type: 'string', enum: ['provider_comes', 'client_goes', 'third_location'] } } } } } } },
+        responses: { 201: { description: 'Service created' } },
+      },
+    },
+    '/work-posts/feed': { get: { summary: 'List published portfolio and consented work posts', parameters: [{ in: 'query', name: 'limit', schema: { type: 'integer', default: 20 } }, { in: 'query', name: 'offset', schema: { type: 'integer', default: 0 } }], responses: { 200: { description: 'Published post page' } } } },
+    '/work-posts': {
+      post: {
+        summary: 'Create a portfolio sample or consent-gated completed-job post',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['media'], properties: { bookingId: { type: 'string', format: 'uuid' }, serviceId: { type: 'string', format: 'uuid' }, caption: { type: 'string', maxLength: 500 }, area: { type: 'string', maxLength: 100 }, media: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'object', required: ['url', 'type'], properties: { url: { type: 'string', format: 'uri' }, type: { type: 'string', enum: ['photo', 'video'] }, durationSeconds: { type: 'number', maximum: 60 } } } } } } } } },
+        responses: { 201: { description: 'Created; verified jobs remain unpublished until consent' } },
+      },
+    },
+    '/work-posts/{id}/consent': {
+      get: { summary: 'View exact media and caption for a consent request', security: [{ bearerAuth: [] }], parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { 200: { description: 'Consent request visible only to the booking client' }, 403: { description: 'Not the booking client' } } },
+      post: { summary: 'Grant, limit, or withdraw consent for a completed-job post', security: [{ bearerAuth: [] }], parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['allowed'], properties: { allowed: { type: 'boolean' }, limitations: { type: 'array', items: { type: 'string' } } } } } } }, responses: { 200: { description: 'Consent record appended; granted posts await moderation, false withdraws prior consent' }, 410: { description: 'Consent request expired after 14 days' } } },
+    },
+    '/bookings': {
+      get: { summary: 'List bookings where the signed-in user is a participant', security: [{ bearerAuth: [] }], parameters: [{ in: 'query', name: 'status', schema: { type: 'string' } }], responses: { 200: { description: 'Participant bookings' } } },
+      post: {
+        summary: 'Request a booking with exactly one meeting mode',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['providerId', 'serviceId', 'startsAt', 'endsAt', 'mode', 'latitude', 'longitude'], properties: { providerId: { type: 'string', format: 'uuid' }, serviceId: { type: 'string', format: 'uuid' }, sourcePostId: { type: 'string', format: 'uuid' }, startsAt: { type: 'string', format: 'date-time' }, endsAt: { type: 'string', format: 'date-time' }, mode: { type: 'string', enum: ['provider_comes', 'client_goes', 'third_location'] }, latitude: { type: 'number' }, longitude: { type: 'number' }, landmark: { type: 'string' } } } } } },
+        responses: { 201: { description: 'Booking requested' }, 409: { description: 'Provider time conflict' } },
+      },
+    },
+    '/bookings/{id}/status': { patch: { summary: 'Confirm, decline, cancel, or complete a booking', security: [{ bearerAuth: [] }], parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['CONFIRMED', 'DECLINED', 'CANCELLED', 'COMPLETED'] } } } } } }, responses: { 200: { description: 'Status transition applied' }, 403: { description: 'Not a participant or role not permitted' } } } },
+    '/issues': { post: { summary: 'Submit a booking or platform issue', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['type', 'subject', 'description'], properties: { type: { type: 'string', enum: ['BOOKING', 'PLATFORM', 'USER', 'LISTING', 'POST', 'SAFETY'] }, bookingId: { type: 'string', format: 'uuid' }, relatedId: { type: 'string', format: 'uuid' }, subject: { type: 'string' }, description: { type: 'string' } } } } } }, responses: { 201: { description: 'Issue submitted' } } } },
+
+    /* Property Manager Endpoints */
+    '/pm/buildings': { get: getPMBuildings },
+    '/pm/reports/export': { get: exportReports },
+    '/pm/receipts/pending': { get: getPMPendingReceipts },
+    '/pm/receipts/{receiptId}/accept': { post: acceptReceipt },
+    '/pm/receipts/{receiptId}/reject': { post: rejectReceipt },
+    '/pm/units/{id}/cycle': { patch: updateUnitCycle },
+    '/pm/tenants/{id}/history': { get: getTenantHistory },
+
+    /* Files */
+    '/files/{path}': { get: serveFile },
+
+    /* Original Endpoints (Optional keeping) */
+    '/buildings': { get: getBuildings },
+    '/units/{id}': { get: getUnit, put: updateUnit, delete: deleteUnit },
+  },
+};
