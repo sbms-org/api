@@ -11,9 +11,16 @@ import {
 import { User } from './user';
 import { UUID } from 'crypto';
 
-export type NotificationType = 'payment_due' | 'lease_expiring' | 'maintenance' | 'general';
+export type NotificationType =
+  | 'booking_requested'
+  | 'booking_updated'
+  | 'provider_verification'
+  | 'work_post_update'
+  | 'issue_update'
+  | 'general'
+  | 'welcome';
 
-@Entity()
+@Entity({ name: 'notifications' })
 export class Notification extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id: UUID;
@@ -26,7 +33,8 @@ export class Notification extends BaseEntity {
 
   @Column({
     type: 'enum',
-    enum: ['payment_due', 'lease_expiring', 'maintenance', 'general'],
+    enum: ['booking_requested', 'booking_updated', 'provider_verification', 'work_post_update', 'issue_update', 'general', 'welcome'],
+    enumName: 'notifications_type_enum',
     default: 'general',
   })
   type: NotificationType;
@@ -48,15 +56,11 @@ export class Notification extends BaseEntity {
   user_id: UUID;
 
   @CreateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   public created_at: Date;
 
-  @UpdateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-    onUpdate: 'CURRENT_TIMESTAMP(6)',
-  })
+  @UpdateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   public updated_at: Date;
 }

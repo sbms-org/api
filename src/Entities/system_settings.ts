@@ -1,7 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, UpdateDateColumn, BaseEntity } from 'typeorm';
 import { UUID } from 'crypto';
 
-@Entity()
+@Entity({ name: 'system_settings' })
 export class SystemSettings extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id: UUID;
@@ -18,6 +18,6 @@ export class SystemSettings extends BaseEntity {
   @Column({ type: 'varchar', length: 50, nullable: true })
   category?: string;
 
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP(6)', onUpdate: 'CURRENT_TIMESTAMP(6)' })
+  @UpdateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
 }

@@ -9,16 +9,16 @@ import {
 } from 'typeorm'
 
 abstract class SbmsEntity extends BaseEntity {
-  @PrimaryColumn({ type: 'char', length: 36 })
+  @PrimaryColumn({ type: 'uuid' })
     id: string = randomUUID()
 
-  @CreateDateColumn({ type: 'datetime', precision: 6 })
+  @CreateDateColumn({ type: 'timestamptz', precision: 6 })
     createdAt: Date
 }
 
 @Entity({ name: 'sbms_provider_profiles' })
 export class ProviderProfile extends SbmsEntity {
-  @Column({ type: 'char', length: 36, unique: true })
+  @Column({ type: 'uuid', unique: true })
     userId: string
 
   @Column({ type: 'varchar', length: 120 })
@@ -33,29 +33,33 @@ export class ProviderProfile extends SbmsEntity {
   @Column({ type: 'decimal', precision: 10, scale: 7 })
     longitude: number
 
-  @Column({ type: 'int', unsigned: true, default: 25 })
+  @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326 })
+    location: { type: 'Point'; coordinates: [number, number] }
+
+  @Column({ type: 'integer', default: 25 })
     serviceRadiusKm: number
 
-  @Column({ type: 'int', unsigned: true, default: 0 })
+  @Column({ type: 'integer', default: 0 })
     travelBufferMinutes: number
 
-  @Column({ type: 'json' })
+  @Column({ type: 'jsonb' })
     meetingModes: string[]
 
   @Column({
     type: 'enum',
     enum: ['PENDING', 'VERIFIED', 'REJECTED'],
+    enumName: 'sbms_provider_profiles_verificationStatus_enum',
     default: 'PENDING',
   })
     verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED'
 
-  @UpdateDateColumn({ type: 'datetime', precision: 6 })
+  @UpdateDateColumn({ type: 'timestamptz', precision: 6 })
     updatedAt: Date
 }
 
 @Entity({ name: 'sbms_services' })
 export class ProviderService extends SbmsEntity {
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     providerId: string
 
   @Column({ type: 'varchar', length: 150 })
@@ -67,13 +71,13 @@ export class ProviderService extends SbmsEntity {
   @Column({ type: 'text', nullable: true })
     description?: string
 
-  @Column({ type: 'int', unsigned: true })
+  @Column({ type: 'integer' })
     priceMinor: number
 
-  @Column({ type: 'int', unsigned: true })
+  @Column({ type: 'integer' })
     durationMinutes: number
 
-  @Column({ type: 'json' })
+  @Column({ type: 'jsonb' })
     meetingModes: string[]
 
   @Column({ type: 'boolean', default: true })
@@ -82,27 +86,28 @@ export class ProviderService extends SbmsEntity {
 
 @Entity({ name: 'sbms_bookings' })
 export class SbmsBooking extends SbmsEntity {
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     clientId: string
 
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     providerId: string
 
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     serviceId: string
 
-  @Column({ type: 'char', length: 36, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
     sourcePostId?: string
 
-  @Column({ type: 'datetime', precision: 6 })
+  @Column({ type: 'timestamptz', precision: 6 })
     startsAt: Date
 
-  @Column({ type: 'datetime', precision: 6 })
+  @Column({ type: 'timestamptz', precision: 6 })
     endsAt: Date
 
   @Column({
     type: 'enum',
     enum: ['provider_comes', 'client_goes', 'third_location'],
+    enumName: 'sbms_bookings_mode_enum',
   })
     mode: 'provider_comes' | 'client_goes' | 'third_location'
 
@@ -112,18 +117,22 @@ export class SbmsBooking extends SbmsEntity {
   @Column({ type: 'decimal', precision: 10, scale: 7 })
     longitude: number
 
+  @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326 })
+    location: { type: 'Point'; coordinates: [number, number] }
+
   @Column({ type: 'varchar', length: 200, nullable: true })
     landmark?: string
 
-  @Column({ type: 'int', unsigned: true })
+  @Column({ type: 'integer' })
     priceMinor: number
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
     completedAt?: Date
 
   @Column({
     type: 'enum',
     enum: ['REQUESTED', 'CONFIRMED', 'DECLINED', 'CANCELLED', 'COMPLETED'],
+    enumName: 'sbms_bookings_status_enum',
     default: 'REQUESTED',
   })
     status: 'REQUESTED' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED' | 'COMPLETED'
@@ -137,16 +146,16 @@ export interface SbmsMediaItem {
 
 @Entity({ name: 'sbms_work_posts' })
 export class WorkPost extends SbmsEntity {
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     providerId: string
 
-  @Column({ type: 'char', length: 36, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
     bookingId?: string
 
-  @Column({ type: 'char', length: 36, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
     serviceId?: string
 
-  @Column({ type: 'enum', enum: ['verified_job', 'sample'] })
+  @Column({ type: 'enum', enum: ['verified_job', 'sample'], enumName: 'sbms_work_posts_type_enum' })
     type: 'verified_job' | 'sample'
 
   @Column({ type: 'varchar', length: 500, nullable: true })
@@ -155,53 +164,58 @@ export class WorkPost extends SbmsEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
     area?: string
 
-  @Column({ type: 'json' })
+  @Column({ type: 'jsonb' })
     media: SbmsMediaItem[]
 
-  @Column({ type: 'int', unsigned: true, default: 1 })
+  @Column({ type: 'integer', default: 1 })
     mediaVersion: number
 
   @Column({
     type: 'enum',
     enum: ['PENDING_CONSENT', 'PENDING_MODERATION', 'PUBLISHED', 'REJECTED', 'CONSENT_EXPIRED'],
+    enumName: 'sbms_work_posts_status_enum',
     default: 'PENDING_CONSENT',
   })
     status: 'PENDING_CONSENT' | 'PENDING_MODERATION' | 'PUBLISHED' | 'REJECTED' | 'CONSENT_EXPIRED'
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
     publishedAt?: Date
 }
 
 @Entity({ name: 'sbms_post_consents' })
 export class PostConsent extends SbmsEntity {
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     postId: string
 
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     clientId: string
 
-  @Column({ type: 'int', unsigned: true })
+  @Column({ type: 'integer' })
     mediaVersion: number
 
   @Column({ type: 'boolean' })
     allowed: boolean
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
     limitations?: string[]
 }
 
 @Entity({ name: 'sbms_issues' })
 export class SbmsIssue extends SbmsEntity {
-  @Column({ type: 'char', length: 36 })
+  @Column({ type: 'uuid' })
     reporterId: string
 
-  @Column({ type: 'enum', enum: ['BOOKING', 'PLATFORM', 'USER', 'LISTING', 'POST', 'SAFETY'] })
+  @Column({
+    type: 'enum',
+    enum: ['BOOKING', 'PLATFORM', 'USER', 'LISTING', 'POST', 'SAFETY'],
+    enumName: 'sbms_issues_type_enum',
+  })
     type: 'BOOKING' | 'PLATFORM' | 'USER' | 'LISTING' | 'POST' | 'SAFETY'
 
-  @Column({ type: 'char', length: 36, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
     bookingId?: string
 
-  @Column({ type: 'char', length: 36, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
     relatedId?: string
 
   @Column({ type: 'varchar', length: 200 })
@@ -213,6 +227,7 @@ export class SbmsIssue extends SbmsEntity {
   @Column({
     type: 'enum',
     enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'],
+    enumName: 'sbms_issues_status_enum',
     default: 'OPEN',
   })
     status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
@@ -220,10 +235,10 @@ export class SbmsIssue extends SbmsEntity {
 
 @Entity({ name: 'sbms_audit_events' })
 export class SbmsAuditEvent extends BaseEntity {
-  @PrimaryColumn({ type: 'char', length: 36 })
+  @PrimaryColumn({ type: 'uuid' })
     id: string = randomUUID()
 
-  @Column({ type: 'char', length: 36, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
     userId?: string
 
   @Column({ type: 'varchar', length: 100 })
@@ -232,7 +247,7 @@ export class SbmsAuditEvent extends BaseEntity {
   @Column({ type: 'varchar', length: 80 })
     entity: string
 
-  @Column({ type: 'char', length: 36, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
     entityId?: string
 
   @Column({ type: 'text', nullable: true })
@@ -241,6 +256,6 @@ export class SbmsAuditEvent extends BaseEntity {
   @Column({ type: 'varchar', length: 45, nullable: true })
     ipAddress?: string
 
-  @CreateDateColumn({ type: 'datetime', precision: 6 })
+  @CreateDateColumn({ type: 'timestamptz', precision: 6 })
     createdAt: Date
 }

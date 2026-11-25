@@ -8,9 +8,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type UserRoleType = 'admin' | 'owner' | 'property_manager' | 'tenant';
+export type UserRoleType = 'client' | 'individual_provider' | 'company_staff' | 'broker' | 'support_agent' | 'admin';
 
-@Entity()
+@Entity({ name: 'users' })
 export class User extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id: UUID;
@@ -26,13 +26,15 @@ export class User extends BaseEntity {
 
   @Column({
     type: 'enum',
-    enum: ['admin', 'owner', 'property_manager', 'tenant'],
+    enum: ['client', 'individual_provider', 'company_staff', 'broker', 'support_agent', 'admin'],
+    enumName: 'users_role_enum',
   })
   role: UserRoleType;
 
   @Column({
     type: 'enum',
     enum: ['PENDING', 'ACTIVE', 'SUSPENDED', 'TERMINATED'],
+    enumName: 'users_status_enum',
     default: 'ACTIVE',
     nullable: true
   })
@@ -41,10 +43,10 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 6, nullable: true })
   otp_code?: string;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   otp_expires?: Date;
 
-  @Column({ type: 'enum', enum: ['male', 'female', 'other'], nullable: true })
+  @Column({ type: 'enum', enum: ['male', 'female', 'other'], enumName: 'users_gender_enum', nullable: true })
   gender?: 'male' | 'female' | 'other';
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -54,23 +56,16 @@ export class User extends BaseEntity {
   city?: string;
 
   @CreateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   public created_at: Date;
 
   @UpdateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-    onUpdate: 'CURRENT_TIMESTAMP(6)',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   public updated_at: Date;
-
-  @Column({ type: 'boolean', default: true })
-  account_status?: boolean;
-
-  @Column({ type: 'uuid', nullable: true })
-  managed_by_owner_id?: UUID;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   fcm_token?: string;

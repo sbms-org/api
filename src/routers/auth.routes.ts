@@ -41,9 +41,8 @@ router.post(
   }
 );
 
-// owner registration endpoint
 router.post(
-  '/register-owner',
+  '/register',
   validate([
     body('mobile').notEmpty().withMessage('Mobile number is required'),
     body('fullname').notEmpty().withMessage('Full name is required'),
@@ -51,7 +50,7 @@ router.post(
   async (req, res, next) => {
     try {
       const { mobile, fullname } = req.body;
-      const result = await AuthController.registerOwner(fullname, mobile);
+      const result = await AuthController.registerClient(fullname, mobile);
       return ApiResponse.success(res, result, 'Registration initiated');
     } catch (error) {
       return next(error);

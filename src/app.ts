@@ -83,19 +83,10 @@ class App {
     });
 
     this.express.use(`${process.env.API_BASE}/auth`, Routes.AuthRouter);
-    this.express.use(`${process.env.API_BASE}/buildings`, Routes.BuildingRouter);
-    this.express.use(`${process.env.API_BASE}/units`, Routes.UnitRouter);
-    this.express.use(`${process.env.API_BASE}/tenants`, Routes.TenantRouter);
-    this.express.use(`${process.env.API_BASE}/owner`, Routes.OwnerRouter);
-    this.express.use(`${process.env.API_BASE}/owner-payment-methods`, Routes.OwnerPaymentMethodRouter);
-    this.express.use(`${process.env.API_BASE}/tenant`, Routes.TenantAppRouter);
     this.express.use(`${process.env.API_BASE}/admin`, Routes.AdminRouter);
-    this.express.use(`${process.env.API_BASE}/pm`, Routes.PmRouter);
     this.express.use(`${process.env.API_BASE}/files`, Routes.FileRouter);
-    this.express.use(`${process.env.API_BASE}/jobs`, Routes.JobsRouter);
     this.express.use(`${process.env.API_BASE}/notification-preferences`, Routes.NotificationPreferencesRouter);
     this.express.use(`${process.env.API_BASE}/user`, Routes.UserProfileRouter);
-    this.express.use(`${process.env.API_BASE}/test`, Routes.TestNotificationsRouter);
     this.express.use(`${process.env.API_BASE}/`, Routes.SbmsRouter);
 
     // Handle 404

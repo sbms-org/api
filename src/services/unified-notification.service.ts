@@ -104,20 +104,12 @@ export class UnifiedNotificationService {
 
   private async createDefaultPreferences(userId: UUID): Promise<NotificationPreferences> {
     const defaultTypes: Record<NotificationTypeKey, { in_app: boolean; push: boolean; email: boolean }> = {
-      tenant_assignment: { in_app: true, push: true, email: false },
-      tenant_assigned: { in_app: true, push: true, email: false },
-      payment_due: { in_app: true, push: true, email: false },
-      payment_overdue: { in_app: true, push: true, email: false },
-      receipt_uploaded: { in_app: true, push: true, email: false },
-      receipt_approved: { in_app: true, push: true, email: false },
-      receipt_rejected: { in_app: true, push: true, email: false },
-      lease_expiring: { in_app: true, push: true, email: false },
-      lease_update: { in_app: true, push: true, email: false },
-      maintenance_request: { in_app: true, push: true, email: false },
-      maintenance_scheduled: { in_app: true, push: true, email: false },
-      tenant_message: { in_app: true, push: true, email: false },
-      owner_message: { in_app: true, push: true, email: false },
-      building_announcement: { in_app: true, push: true, email: false },
+      booking_requested: { in_app: true, push: true, email: false },
+      booking_updated: { in_app: true, push: true, email: false },
+      provider_verification: { in_app: true, push: true, email: false },
+      work_post_update: { in_app: true, push: true, email: false },
+      issue_update: { in_app: true, push: true, email: false },
+      general: { in_app: true, push: true, email: false },
       welcome: { in_app: true, push: true, email: false },
     };
 
@@ -179,9 +171,8 @@ export class UnifiedNotificationService {
 
   async getSystemNotificationSettings(): Promise<Record<NotificationTypeKey, boolean>> {
     const types: NotificationTypeKey[] = [
-      'payment_due', 'payment_overdue', 'receipt_uploaded', 'receipt_approved',
-      'receipt_rejected', 'lease_expiring', 'lease_update', 'maintenance_request',
-      'maintenance_scheduled', 'tenant_message', 'owner_message', 'building_announcement', 'welcome'
+      'booking_requested', 'booking_updated', 'provider_verification',
+      'work_post_update', 'issue_update', 'general', 'welcome',
     ];
 
     const settings: Record<string, boolean> = {};

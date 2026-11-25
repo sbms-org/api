@@ -3,23 +3,15 @@ import { User } from './user';
 import { UUID } from 'crypto';
 
 export type NotificationTypeKey = 
-  | 'tenant_assignment'
-  | 'tenant_assigned'
-  | 'payment_due'
-  | 'payment_overdue'
-  | 'receipt_uploaded'
-  | 'receipt_approved'
-  | 'receipt_rejected'
-  | 'lease_expiring'
-  | 'lease_update'
-  | 'maintenance_request'
-  | 'maintenance_scheduled'
-  | 'tenant_message'
-  | 'owner_message'
-  | 'building_announcement'
+  | 'booking_requested'
+  | 'booking_updated'
+  | 'provider_verification'
+  | 'work_post_update'
+  | 'issue_update'
+  | 'general'
   | 'welcome';
 
-@Entity()
+@Entity({ name: 'notification_preferences' })
 export class NotificationPreferences extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id: UUID;
@@ -42,16 +34,16 @@ export class NotificationPreferences extends BaseEntity {
   email_enabled: boolean;
 
   // Per-notification-type settings (JSON)
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   notification_types: Record<NotificationTypeKey, {
     in_app: boolean;
     push: boolean;
     email: boolean;
   }>;
 
-  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP(6)' })
+  @CreateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP(6)', onUpdate: 'CURRENT_TIMESTAMP(6)' })
+  @UpdateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
 }

@@ -2,17 +2,10 @@ import app from './app';
 import logger from './configurations/logger';
 import { dataSource } from './configurations/db.config';
 
-const port = Number(process.env.PORT) || 4242;
+const port = Number(process.env.PORT) || 3000;
 
 const server = app.listen(port, '0.0.0.0', () => {
   logger.info(`Server (PID ${process.pid}) is running on port ${port}`);
-
-  // Start payment scheduler
-  import('./jobs/payment.scheduler').then(({ PaymentScheduler }) => {
-    const scheduler = new PaymentScheduler();
-    scheduler.start();
-    logger.info('Payment Scheduler started');
-  });
 });
 
 const gracefulShutdown = async (signal: string) => {

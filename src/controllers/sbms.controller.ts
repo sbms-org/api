@@ -11,7 +11,7 @@ import {
   SbmsMediaItem,
 } from '../Entities/sbms'
 import { SystemSettings } from '../Entities/system_settings'
-import { User } from '../Entities/user'
+import { User, UserRoleType } from '../Entities/user'
 import { ApiResponse } from '../utils/ApiResponse'
 import { canTransitionBooking, distanceKm } from '../utils/sbms.rules'
 import { In } from 'typeorm'
@@ -58,6 +58,14 @@ const latitudeLongitudeValid = (latitude: unknown, longitude: unknown): boolean 
 
 const approximate = (coordinate: number): number => Number(coordinate.toFixed(3))
 
+const parseSettingValue = (value: string): unknown => {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
 const validModes = (value: unknown): value is MeetingMode[] => {
   return Array.isArray(value) && value.length > 0 && value.every((mode) => modes.includes(mode))
 }
@@ -92,8 +100,8 @@ const audit = async (req: Request, action: string, entity: string, entityId?: st
 const run = (handler: (req: Request, res: Response) => Promise<unknown>) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = (req as any).user as { status?: string; account_status?: boolean } | undefined
-      if (user && (user.account_status === false || (user.status && user.status !== 'ACTIVE'))) {
+      const user = (req as any).user as { status?: string } | undefined
+      if (user && user.status && user.status !== 'ACTIVE') {
         forbidden('Account is not active')
       }
       await handler(req, res)
@@ -120,6 +128,7 @@ export const ProviderController = {
       bio: typeof bio === 'string' ? bio.trim() : undefined,
       latitude,
       longitude,
+      location: { type: 'Point', coordinates: [longitude, latitude] },
       serviceRadiusKm,
       travelBufferMinutes,
       meetingModes: [...new Set(meetingModes)],
@@ -145,6 +154,7 @@ export const ProviderController = {
       if (!latitudeLongitudeValid(newLatitude, newLongitude)) badRequest('latitude and longitude must be valid coordinates')
       profile.latitude = newLatitude
       profile.longitude = newLongitude
+      profile.location = { type: 'Point', coordinates: [newLongitude, newLatitude] }
     }
     if (serviceRadiusKm !== undefined) {
       if (!Number.isInteger(serviceRadiusKm) || serviceRadiusKm < 1 || serviceRadiusKm > 500) badRequest('serviceRadiusKm must be an integer from 1 to 500')
@@ -194,12 +204,17 @@ export const ProviderController = {
     const category = typeof req.query.category === 'string' ? req.query.category.trim().toLowerCase() : undefined
     const meetingMode = typeof req.query.meetingMode === 'string' ? req.query.meetingMode : undefined
     if (meetingMode && !modes.includes(meetingMode as MeetingMode)) badRequest('meetingMode is not supported')
-    const profiles = await dataSource.getRepository(ProviderProfile).findBy({ verificationStatus: 'VERIFIED' })
+    const profiles = await dataSource.getRepository(ProviderProfile).createQueryBuilder('provider')
+      .where('provider.verificationStatus = :status', { status: 'VERIFIED' })
+      .andWhere(
+        'ST_DWithin(provider.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography, LEAST(:radiusMeters, provider.serviceRadiusKm * 1000))',
+        { longitude, latitude, radiusMeters: radiusKm * 1000 },
+      )
+      .getMany()
     if (!profiles.length) return ApiResponse.success(res, [])
     const users = await dataSource.getRepository(User).findBy({
       id: In(profiles.map((profile) => profile.userId as User['id'])),
       status: 'ACTIVE',
-      account_status: true,
     })
     const activeUserById = new Map<string, User>(users.map((user) => [String(user.id), user]))
     const candidates = await Promise.all(profiles.map(async (profile) => {
@@ -240,7 +255,6 @@ export const ProviderController = {
     const owner = await dataSource.getRepository(User).findOneBy({
       id: profile.userId as User['id'],
       status: 'ACTIVE',
-      account_status: true,
     })
     if (!owner) notFound('Verified provider not found')
     const services = await dataSource.getRepository(ProviderService).findBy({ providerId: profile.id, isActive: true })
@@ -307,7 +321,6 @@ export const BookingController = {
       const providerOwner = await manager.getRepository(User).findOneBy({
         id: provider.userId as User['id'],
         status: 'ACTIVE',
-        account_status: true,
       })
       if (!providerOwner) notFound('Verified provider not found')
       if (provider.userId === clientId) badRequest('Providers cannot book their own services')
@@ -347,6 +360,13 @@ export const BookingController = {
         mode,
         latitude: mode === 'client_goes' ? Number(provider.latitude) : latitude,
         longitude: mode === 'client_goes' ? Number(provider.longitude) : longitude,
+        location: {
+          type: 'Point',
+          coordinates: [
+            mode === 'client_goes' ? Number(provider.longitude) : longitude,
+            mode === 'client_goes' ? Number(provider.latitude) : latitude,
+          ],
+        },
         landmark: landmark?.trim() || undefined,
         priceMinor: service.priceMinor,
         status: 'REQUESTED',
@@ -590,6 +610,38 @@ export const AdminSbmsController = {
     return ApiResponse.success(res, { items, total, limit, offset })
   }),
 
+  listUsers: run(async (req, res) => {
+    const role = typeof req.query.role === 'string' ? req.query.role : undefined
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined
+    const repository = dataSource.getRepository(User)
+    const users = await repository.find({
+      where: {
+        ...(role ? { role: role as User['role'] } : {}),
+        ...(status ? { status: status as User['status'] } : {}),
+      },
+      order: { created_at: 'DESC' },
+    })
+    return ApiResponse.success(res, users)
+  }),
+
+  updateUser: run(async (req, res) => {
+    const id = typeof req.params.id === 'string' ? req.params.id : ''
+    if (!id) badRequest('User id is required')
+    const { role, status } = req.body
+    const supportedRoles = ['client', 'individual_provider', 'company_staff', 'broker', 'support_agent', 'admin']
+    const supportedStatuses = ['PENDING', 'ACTIVE', 'SUSPENDED', 'TERMINATED']
+    if (role !== undefined && !supportedRoles.includes(role)) badRequest('Unsupported role')
+    if (status !== undefined && !supportedStatuses.includes(status)) badRequest('Unsupported status')
+    const repository = dataSource.getRepository(User)
+    const user = await repository.findOneBy({ id: id as User['id'] })
+    if (!user) notFound('User not found')
+    if (role !== undefined) user.role = role as UserRoleType
+    if (status !== undefined) user.status = status as User['status']
+    await repository.save(user)
+    await audit(req, 'user.updated', 'user', user.id, { role, status })
+    return ApiResponse.success(res, user)
+  }),
+
   listVerifications: run(async (_req, res) => {
     const providers = await dataSource.getRepository(ProviderProfile).find({
       where: { verificationStatus: 'PENDING' },
@@ -599,7 +651,8 @@ export const AdminSbmsController = {
   }),
 
   reviewVerification: run(async (req, res) => {
-    const { providerId, status } = req.body
+    const providerId = typeof req.body.providerId === 'string' ? req.body.providerId : req.body.id
+    const { status } = req.body
     if (typeof providerId !== 'string' || !['VERIFIED', 'REJECTED'].includes(status)) {
       badRequest('providerId and status (VERIFIED or REJECTED) are required')
     }
@@ -621,7 +674,8 @@ export const AdminSbmsController = {
   }),
 
   reviewModeration: run(async (req, res) => {
-    const { postId, status } = req.body
+    const postId = typeof req.body.postId === 'string' ? req.body.postId : req.body.id
+    const { status } = req.body
     if (typeof postId !== 'string' || !['PUBLISHED', 'REJECTED'].includes(status)) {
       badRequest('postId and status (PUBLISHED or REJECTED) are required')
     }
@@ -654,7 +708,8 @@ export const AdminSbmsController = {
   }),
 
   updateIssue: run(async (req, res) => {
-    const { issueId, status } = req.body
+    const issueId = typeof req.body.issueId === 'string' ? req.body.issueId : req.body.id
+    const { status } = req.body
     if (typeof issueId !== 'string' || !['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(status)) {
       badRequest('issueId and a valid status are required')
     }
@@ -691,6 +746,21 @@ export const AdminSbmsController = {
       posts: posts.filter((item) => inRange(item.createdAt)).length,
       publishedPosts: posts.filter((item) => item.status === 'PUBLISHED' && inRange(item.createdAt)).length,
       filters: { since, until },
+    })
+  }),
+
+  getSettings: run(async (_req, res) => {
+    const items = await dataSource.getRepository(SystemSettings).find({
+      order: { category: 'ASC', setting_key: 'ASC' },
+    })
+    return ApiResponse.success(res, {
+      items: items.map((item) => ({
+        key: item.setting_key,
+        value: parseSettingValue(item.setting_value),
+        category: item.category || 'general',
+        description: item.description,
+        updatedAt: item.updated_at,
+      })),
     })
   }),
 

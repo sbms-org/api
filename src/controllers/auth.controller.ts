@@ -71,30 +71,25 @@ class Auth {
     return this.genToken(user);
   };
 
-  // register a new owner or return existing user OTP info
-  public registerOwner = async (fullname: string, mobile: string) => {
+  public registerClient = async (fullname: string, mobile: string) => {
     const repo = dataSource.getRepository(User);
     const existing = await repo.findOneBy({ mobile });
     if (existing) {
-        const err = new Error('Phone number already registered');
-        (err as any).status = 400;
-        (err as any).errorCode = 'ADMIN_EXISTS';
-        throw err;
-      // user already exists (owner/tenant/etc.) – just send OTP again
-      await this.sendOtp(mobile);
-      return { message: 'OTP sent successfully' };
+      const err = new Error('Phone number already registered');
+      (err as any).status = 400;
+      (err as any).errorCode = 'USER_EXISTS';
+      throw err;
     }
 
     const user = new User();
     user.fullname = fullname;
     user.mobile = mobile;
-    user.role = 'owner';
-    user.status = 'PENDING';
+    user.role = 'client';
+    user.status = 'ACTIVE';
     await user.save();
 
-    // send OTP to verify before showing pending message (force bypass status check)
-    await this.sendOtp(mobile, true);
-    return { message: 'Registration successful, pending review' };
+    await this.sendOtp(mobile);
+    return { message: 'Registration successful' };
   };
 
   private genToken = (user: User): { token: string; expiresAt: string; user: any } => {
