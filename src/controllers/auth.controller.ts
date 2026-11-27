@@ -2,9 +2,18 @@ import jwt from 'jwt-simple';
 import moment from 'moment';
 import { User } from '../Entities/user';
 import { dataSource } from '../configurations/db.config';
+import { demoState, demoUserByMobile, isDemoDataActive, newDemoId, DemoUser } from '../services/sbms-demo-store';
 
 class Auth {
   public sendOtp = async (mobile: string, force = false) => {
+    if (await isDemoDataActive()) {
+      const demoUser = demoUserByMobile(mobile)
+      if (!demoUser) throw Object.assign(new Error('Phone number is not a demo account'), { status: 404 })
+      if (!force && demoUser.status !== 'ACTIVE') {
+        throw Object.assign(new Error('Account is inactive'), { status: 403 })
+      }
+      return { message: 'Demo verification code: 123456' }
+    }
     const user = await dataSource.getRepository(User).findOneBy({ mobile });
     if (!user) throw new Error('User not found');
 
@@ -33,6 +42,16 @@ class Auth {
   };
 
   public verifyOtp = async (mobile: string, otp: string) => {
+    if (await isDemoDataActive()) {
+      const demoUser = demoUserByMobile(mobile)
+      if (!demoUser || otp !== '123456') {
+        throw Object.assign(new Error('Invalid demo OTP or phone number'), { status: 400, errorCode: 'INVALID_OTP' })
+      }
+      if (demoUser.status !== 'ACTIVE') {
+        throw Object.assign(new Error('Account is inactive'), { status: 403, errorCode: 'ACCOUNT_INACTIVE' })
+      }
+      return this.genDemoToken(demoUser)
+    }
     // Accept the development stub code unconditionally if the mobile exists.
     // This allows both login and registration flows to succeed using 123456
     // without worrying about what is stored in the database.
@@ -72,6 +91,23 @@ class Auth {
   };
 
   public registerClient = async (fullname: string, mobile: string) => {
+    if (await isDemoDataActive()) {
+      if (demoUserByMobile(mobile)) {
+        throw Object.assign(new Error('Phone number already registered'), { status: 400, errorCode: 'USER_EXISTS' })
+      }
+      const user: DemoUser = {
+        id: newDemoId(),
+        fullname,
+        mobile,
+        email: '',
+        role: 'client',
+        status: 'ACTIVE',
+        city: '',
+        created_at: new Date().toISOString(),
+      }
+      demoState().users.push(user)
+      return { message: 'Demo registration successful; use OTP 123456' }
+    }
     const repo = dataSource.getRepository(User);
     const existing = await repo.findOneBy({ mobile });
     if (existing) {
@@ -114,6 +150,19 @@ class Auth {
       }
     };
   };
+
+  private genDemoToken = (user: DemoUser): { token: string; expiresAt: string; user: any } => {
+    const expires = moment().utc().add({ minutes: 60 * 24 * 7 }).unix()
+    const token = jwt.encode(
+      { exp: expires, user: user.id, demo: true },
+      process.env.JWT_SECRET as string,
+    )
+    return {
+      token,
+      expiresAt: moment.unix(expires).utc().toISOString(),
+      user: { id: user.id, mobile: user.mobile, role: user.role, name: user.fullname },
+    }
+  }
 }
 
 export default new Auth();

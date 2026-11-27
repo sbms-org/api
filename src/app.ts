@@ -13,6 +13,8 @@ import { devSecretHandler } from './middlewares/dev-secret.handler';
 import { typeCleanupHandler } from './middlewares/type-cleanup.handler';
 import { errorHandler } from './middlewares/error-handler';
 import * as Routes from './routers';
+import DemoRouter from './routers/demo.routes';
+import { isDemoDataActive } from './services/sbms-demo-store';
 
 class App {
   public express: Application = express();
@@ -36,7 +38,8 @@ class App {
     // this.express.use(helmet());
     this.express.use(cors({
       origin: ['http://localhost:5173', 'http://localhost:3000'],
-      credentials: true
+      credentials: true,
+      exposedHeaders: ['X-SBMS-Data-Source'],
     }));
 
     // Rate Limiting (Relaxed if dev secret present)
@@ -76,12 +79,16 @@ class App {
 
     this.express.get('/health', async (req, res) => {
       const isConnected = dataSource.isInitialized;
-      res.status(isConnected ? 200 : 503).json({
-        success: isConnected,
-        message: isConnected ? 'Database Connected' : 'Database Disconnected',
+      const demoMode = await isDemoDataActive();
+      res.status(isConnected || demoMode ? 200 : 503).json({
+        success: isConnected || demoMode,
+        message: isConnected ? 'Database Connected' : demoMode ? 'Using SBMS JSON demo data' : 'Database Disconnected',
+        databaseConnected: isConnected,
+        demoMode,
       });
     });
 
+    this.express.use(`${process.env.API_BASE}/`, DemoRouter);
     this.express.use(`${process.env.API_BASE}/auth`, Routes.AuthRouter);
     this.express.use(`${process.env.API_BASE}/admin`, Routes.AdminRouter);
     this.express.use(`${process.env.API_BASE}/files`, Routes.FileRouter);
