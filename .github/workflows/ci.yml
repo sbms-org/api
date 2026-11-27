@@ -1,0 +1,48 @@
+name: API CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Build and test API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_BASE: /api/v1
+      JWT_SECRET: sbms-ci-test-secret-not-for-production
+      SBMS_DEMO_MODE: always
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compile TypeScript
+        run: pnpm run build
+
+      - name: Run unit and API tests
+        run: pnpm test -- --runInBand
