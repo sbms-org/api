@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import demoData from '../data/sbms-demo-data.json'
 import { dataSource } from '../configurations/db.config'
-import { User } from '../Entities/user'
+import { SbmsBooking, SbmsIssue, WorkPost, ProviderProfile } from '../Entities/sbms'
 import logger from '../configurations/logger'
 import { Response } from 'express'
 
@@ -190,8 +190,16 @@ export async function isDemoDataActive (): Promise<boolean> {
   if (!dataSource.isInitialized) return true
   if (activeCache && activeCache.expiresAt > Date.now()) return activeCache.value
   try {
-    const userCount = await dataSource.getRepository(User).count()
-    activeCache = { value: userCount === 0, expiresAt: Date.now() + 5000 }
+    const [providerCount, bookingCount, postCount, issueCount] = await Promise.all([
+      dataSource.getRepository(ProviderProfile).count(),
+      dataSource.getRepository(SbmsBooking).count(),
+      dataSource.getRepository(WorkPost).count(),
+      dataSource.getRepository(SbmsIssue).count(),
+    ])
+    activeCache = {
+      value: providerCount + bookingCount + postCount + issueCount === 0,
+      expiresAt: Date.now() + 5000,
+    }
   } catch (error) {
     logger.warn('Database is unavailable for SBMS reads; using the JSON demo dataset', error)
     activeCache = { value: true, expiresAt: Date.now() + 1000 }

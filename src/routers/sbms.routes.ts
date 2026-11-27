@@ -10,6 +10,7 @@ import {
 const router = Router()
 
 router.get('/providers/nearby', ProviderController.nearby)
+router.get('/providers/me', authMiddleware, ProviderController.getMine)
 router.get('/providers/:id', ProviderController.get)
 router.post('/providers', authMiddleware, ProviderController.create)
 router.patch('/providers/me', authMiddleware, ProviderController.updateMine)
@@ -17,6 +18,7 @@ router.post('/providers/me/services', authMiddleware, ProviderController.createS
 
 router.get('/work-posts/feed', WorkPostController.feed)
 router.post('/work-posts', authMiddleware, WorkPostController.create)
+router.get('/work-posts/consent-requests', authMiddleware, WorkPostController.consentRequests)
 router.get('/work-posts/:id/consent', authMiddleware, WorkPostController.consentRequest)
 router.post('/work-posts/:id/consent', authMiddleware, WorkPostController.consent)
 

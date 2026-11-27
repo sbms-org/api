@@ -195,6 +195,36 @@ export const ProviderController = {
     return ApiResponse.success(res, service, 'Service created', 201)
   }),
 
+  getMine: run(async (req, res) => {
+    const profile = await dataSource.getRepository(ProviderProfile).findOneBy({
+      userId: currentUser(req).id,
+    })
+    if (!profile) return ApiResponse.success(res, null)
+    const owner = await dataSource.getRepository(User).findOneBy({
+      id: profile.userId as User['id'],
+      status: 'ACTIVE',
+    })
+    if (!owner) notFound('Provider account is not active')
+    const services = await dataSource.getRepository(ProviderService).findBy({
+      providerId: profile.id,
+      isActive: true,
+    })
+    return ApiResponse.success(res, {
+      id: profile.id,
+      userId: profile.userId,
+      displayName: owner.fullname,
+      category: profile.category,
+      bio: profile.bio,
+      latitude: approximate(Number(profile.latitude)),
+      longitude: approximate(Number(profile.longitude)),
+      serviceRadiusKm: profile.serviceRadiusKm,
+      travelBufferMinutes: profile.travelBufferMinutes,
+      meetingModes: profile.meetingModes,
+      verificationStatus: profile.verificationStatus,
+      services,
+    })
+  }),
+
   nearby: run(async (req, res) => {
     const latitude = Number(req.query.latitude)
     const longitude = Number(req.query.longitude)
@@ -450,6 +480,22 @@ export const WorkPostController = {
       skip: offset,
     })
     return ApiResponse.success(res, { items: posts, total, limit, offset })
+  }),
+
+  consentRequests: run(async (req, res) => {
+    const userId = currentUser(req).id
+    const bookings = await dataSource.getRepository(SbmsBooking).findBy({ clientId: userId })
+    const bookingIds = bookings.map((booking) => booking.id)
+    if (!bookingIds.length) return ApiResponse.success(res, [])
+    const posts = await dataSource.getRepository(WorkPost).find({
+      where: {
+        bookingId: In(bookingIds),
+        type: 'verified_job',
+        status: 'PENDING_CONSENT',
+      },
+      order: { createdAt: 'DESC' },
+    })
+    return ApiResponse.success(res, posts)
   }),
 
   create: run(async (req, res) => {

@@ -1,6 +1,7 @@
 import express, { ErrorRequestHandler } from 'express'
-import request from 'supertest'
 import DemoRouter from './demo.routes'
+
+const request = require('supertest')
 
 process.env.SBMS_DEMO_MODE = 'always'
 process.env.JWT_SECRET = 'sbms-demo-test-secret'
@@ -39,6 +40,21 @@ describe('SBMS JSON demo API', () => {
     expect(clientBookings.body.data).toHaveLength(2)
     expect(clientBookings.body.data.every((booking: { clientId: string }) =>
       booking.clientId === '10000000-0000-4000-8000-000000000001')).toBe(true)
+
+    const consentRequests = await request(app)
+      .get('/work-posts/consent-requests')
+      .set('Authorization', `Bearer ${clientToken}`)
+    expect(consentRequests.status).toBe(200)
+    expect(consentRequests.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: '50000000-0000-4000-8000-000000000003' }),
+    ]))
+
+    const consentResponse = await request(app)
+      .post('/work-posts/50000000-0000-4000-8000-000000000003/consent')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ allowed: true, limitations: ['Do not show faces'] })
+    expect(consentResponse.status).toBe(200)
+    expect(consentResponse.body.data.post.status).toBe('PENDING_MODERATION')
 
     const forbidden = await request(app)
       .get('/admin/users')

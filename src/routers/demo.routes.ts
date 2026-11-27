@@ -150,6 +150,12 @@ demoRouter.get('/providers/nearby', demoOnly((req, res) => {
   return ApiResponse.success(res, results)
 }))
 
+demoRouter.get('/providers/me', authMiddleware, demoOnly((req, res) => {
+  const user = requiredUser(req)
+  const provider = ownProvider(user.id)
+  return ApiResponse.success(res, provider ? providerResponse(provider) : null)
+}))
+
 demoRouter.get('/providers/:id', demoOnly((req, res) => {
   const provider = data().providers.find((item) =>
     (item.id === req.params.id || item.userId === req.params.id) &&
@@ -233,6 +239,23 @@ demoRouter.get('/work-posts/feed', demoOnly((req, res) => {
       }
     })
   return ApiResponse.success(res, paginate(posts, req))
+}))
+
+demoRouter.get('/work-posts/consent-requests', authMiddleware, demoOnly((req, res) => {
+  const user = requiredUser(req)
+  const bookings = data().bookings.filter((booking) => booking.clientId === user.id)
+  const bookingIds = new Set(bookings.map((booking) => booking.id))
+  const requests = data().workPosts
+    .filter((post) => post.type === 'verified_job' &&
+      post.status === 'PENDING_CONSENT' &&
+      post.bookingId !== undefined &&
+      bookingIds.has(post.bookingId))
+    .map((post) => {
+      const provider = data().providers.find((item) => item.id === post.providerId)
+      const owner = data().users.find((item) => item.id === provider?.userId)
+      return { ...post, providerName: owner?.fullname }
+    })
+  return ApiResponse.success(res, requests)
 }))
 
 demoRouter.post('/work-posts', authMiddleware, demoOnly((req, res) => {
