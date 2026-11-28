@@ -227,7 +227,8 @@ export const demoUserByMobile = (mobile: string): DemoUser | undefined =>
 export const demoUserById = (id: string): DemoUser | undefined =>
   state.users.find((user) => user.id === id)
 
-export async function isDemoDataActive (): Promise<boolean> {
+export async function isDemoDataActive (forceDatabase = false): Promise<boolean> {
+  if (forceDatabase) return false
   // Temporary development setting. Set SBMS_DEMO_MODE=off before production.
   const setting = (process.env.SBMS_DEMO_MODE || 'always').toLowerCase()
   if (setting === 'always') return true

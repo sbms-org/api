@@ -5,8 +5,8 @@ import { dataSource } from '../configurations/db.config';
 import { demoState, demoUserByMobile, isDemoDataActive, newDemoId, DemoUser } from '../services/sbms-demo-store';
 
 class Auth {
-  public sendOtp = async (mobile: string, force = false) => {
-    if (await isDemoDataActive()) {
+  public sendOtp = async (mobile: string, force = false, forceDatabase = false) => {
+    if (await isDemoDataActive(forceDatabase)) {
       const demoUser = demoUserByMobile(mobile)
       if (!demoUser) throw Object.assign(new Error('Phone number is not a demo account'), { status: 404 })
       if (!force && demoUser.status !== 'ACTIVE') {
@@ -41,8 +41,8 @@ class Auth {
     };
   };
 
-  public verifyOtp = async (mobile: string, otp: string) => {
-    if (await isDemoDataActive()) {
+  public verifyOtp = async (mobile: string, otp: string, forceDatabase = false) => {
+    if (await isDemoDataActive(forceDatabase)) {
       const demoUser = demoUserByMobile(mobile)
       if (!demoUser || otp !== '123456') {
         throw Object.assign(new Error('Invalid demo OTP or phone number'), { status: 400, errorCode: 'INVALID_OTP' })
@@ -90,8 +90,8 @@ class Auth {
     return this.genToken(user);
   };
 
-  public registerClient = async (fullname: string, mobile: string) => {
-    if (await isDemoDataActive()) {
+  public registerClient = async (fullname: string, mobile: string, forceDatabase = false) => {
+    if (await isDemoDataActive(forceDatabase)) {
       if (demoUserByMobile(mobile)) {
         throw Object.assign(new Error('Phone number already registered'), { status: 400, errorCode: 'USER_EXISTS' })
       }

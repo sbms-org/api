@@ -41,6 +41,7 @@ const ownedBooking = (booking: DemoBooking, user: DemoUser): boolean =>
 const demoOnly = (handler: (req: Request, res: Response) => unknown | Promise<unknown>) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (req.get('X-SBMS-Data-Mode') === 'database') return next()
       if (!(await isDemoDataActive())) return next()
       markDemoResponse(res)
       return await handler(req, res)
@@ -72,6 +73,9 @@ const providerResponse = (provider: DemoProvider, distance?: number) => {
 
 demoRouter.get('/auth/demo-users', async (_req, res, next) => {
   try {
+    if (_req.get('X-SBMS-Data-Mode') === 'database') {
+      return ApiResponse.success(res, { demoMode: false, users: [] })
+    }
     if (!(await isDemoDataActive())) return ApiResponse.success(res, { demoMode: false, users: [] })
     markDemoResponse(res)
     return ApiResponse.success(res, {

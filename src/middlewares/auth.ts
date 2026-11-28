@@ -15,7 +15,8 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
   try {
     const payload = jwt.decode(token, process.env.JWT_SECRET as string);
-    if (payload.demo === true && await isDemoDataActive()) {
+    if (payload.demo === true &&
+        await isDemoDataActive(req.get('X-SBMS-Data-Mode') === 'database')) {
       const demoUser = demoUserById(payload.user)
       if (!demoUser || demoUser.status !== 'ACTIVE') {
         return res.status(401).json({ error: 'Demo user not found or inactive' });

@@ -16,7 +16,11 @@ router.post(
   async (req, res, next) => {
     try {
       const { mobile } = req.body;
-      const result = await AuthController.sendOtp(mobile);
+      const result = await AuthController.sendOtp(
+        mobile,
+        false,
+        req.get('X-SBMS-Data-Mode') === 'database',
+      );
       return ApiResponse.success(res, result, 'OTP sent successfully');
     } catch (error) {
       return next(error);
@@ -33,7 +37,11 @@ router.post(
   async (req, res, next) => {
     try {
       const { mobile, otp } = req.body;
-      const result = await AuthController.verifyOtp(mobile, otp);
+      const result = await AuthController.verifyOtp(
+        mobile,
+        otp,
+        req.get('X-SBMS-Data-Mode') === 'database',
+      );
       return ApiResponse.success(res, result, 'Login successful');
     } catch (error) {
       return next(error);
@@ -50,7 +58,11 @@ router.post(
   async (req, res, next) => {
     try {
       const { mobile, fullname } = req.body;
-      const result = await AuthController.registerClient(fullname, mobile);
+      const result = await AuthController.registerClient(
+        fullname,
+        mobile,
+        req.get('X-SBMS-Data-Mode') === 'database',
+      );
       return ApiResponse.success(res, result, 'Registration initiated');
     } catch (error) {
       return next(error);

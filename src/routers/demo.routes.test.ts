@@ -27,6 +27,24 @@ describe('SBMS JSON demo API', () => {
     ]))
   })
 
+  it('honors a mobile request to use the database even when demo mode is forced', async () => {
+    const accounts = await request(app)
+      .get('/auth/demo-users')
+      .set('X-SBMS-Data-Mode', 'database')
+
+    expect(accounts.status).toBe(200)
+    expect(accounts.body.data).toEqual({ demoMode: false, users: [] })
+    expect(accounts.headers['x-sbms-data-source']).toBeUndefined()
+
+    const providers = await request(app)
+      .get('/providers/nearby')
+      .set('X-SBMS-Data-Mode', 'database')
+      .query({ latitude: 9.02, longitude: 38.75, radiusKm: 25 })
+
+    expect(providers.status).toBe(404)
+    expect(providers.headers['x-sbms-data-source']).toBeUndefined()
+  })
+
   it('scopes bookings by authenticated user and protects admin records', async () => {
     const clientLogin = await request(app)
       .post('/auth/verify-otp')
