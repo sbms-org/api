@@ -122,6 +122,17 @@ export interface DemoSetting {
   updatedAt: string
 }
 
+export interface DemoRecord {
+  id: string
+  [key: string]: unknown
+}
+
+export interface DemoLocalizationString {
+  key: string
+  locale: string
+  value: string
+}
+
 export interface DemoData {
   users: DemoUser[]
   providers: DemoProvider[]
@@ -132,6 +143,42 @@ export interface DemoData {
   issues: DemoIssue[]
   auditEvents: DemoAuditEvent[]
   settings: DemoSetting[]
+  categories: DemoRecord[]
+  savedPlaces: DemoRecord[]
+  favorites: DemoRecord[]
+  reviews: DemoRecord[]
+  payments: DemoRecord[]
+  conversations: DemoRecord[]
+  trustedContacts: DemoRecord[]
+  gigs: DemoRecord[]
+  brokerRoster: DemoRecord[]
+  reports: DemoRecord[]
+  notifications: DemoRecord[]
+  safetyEvents: DemoRecord[]
+  availabilityRules: DemoRecord[]
+  providerDocuments: DemoRecord[]
+  companyInvites: DemoRecord[]
+  staffAssignments: DemoRecord[]
+  travelFeeRules: DemoRecord[]
+  servicePackages: DemoRecord[]
+  serviceAddons: DemoRecord[]
+  serviceRequests: DemoRecord[]
+  serviceOffers: DemoRecord[]
+  quotes: DemoRecord[]
+  notificationPreferences: DemoRecord[]
+  knowledgeBaseArticles: DemoRecord[]
+  surveys: DemoRecord[]
+  earningsLedger: DemoRecord[]
+  brokerCommissions: DemoRecord[]
+  payoutRequests: DemoRecord[]
+  invoices: DemoRecord[]
+  refunds: DemoRecord[]
+  blockedUsers: DemoRecord[]
+  riskFlags: DemoRecord[]
+  gigApplications: DemoRecord[]
+  postAnalytics: DemoRecord[]
+  scheduledReports: DemoRecord[]
+  localizationStrings: DemoLocalizationString[]
 }
 
 const state: DemoData = JSON.parse(JSON.stringify(demoData)) as DemoData
